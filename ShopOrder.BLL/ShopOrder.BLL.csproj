@@ -6,4 +6,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ShopOrder.DAL\ShopOrder.DAL.csproj" />
+    <ProjectReference Include="..\ShopOrder.Models\ShopOrder.Models.csproj" />
+  </ItemGroup>
+
 </Project>
