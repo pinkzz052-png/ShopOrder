@@ -1,5 +1,9 @@
+using ShopOrder.Api;
+using ShopOrder.DAL;
+
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddSingleton<IGetConnectionString, GetConnectionString>();
 // Add services to the container.
 
 builder.Services.AddControllers();
