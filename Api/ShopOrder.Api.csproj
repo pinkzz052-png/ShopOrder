@@ -14,4 +14,8 @@
     <Folder Include="Controllers\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ShopOrder.DAL\ShopOrder.DAL.csproj" />
+  </ItemGroup>
+
 </Project>
