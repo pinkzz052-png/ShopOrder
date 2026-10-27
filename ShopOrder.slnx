@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/exception/">
+    <Project Path="ShopOrder.DAL/ShopOrder.DAL.csproj" Id="49c46fa7-a6c6-4657-a2f2-141181616a96" />
+    <Project Path="ShopOrder.Models/ShopOrder.Models.csproj" Id="be08465a-b7c7-447b-9959-8fe77d81efc2" />
+  </Folder>
+  <Folder Name="/exception/Database/" />
+  <Project Path="Api/ShopOrder.Api.csproj" Id="e06385f5-3e42-48fb-ac6f-ec8ef2d3272b" />
+  <Project Path="ShopOrder.BLL/ShopOrder.BLL.csproj" Id="ce2216c7-3b0c-4266-a81e-8251f2bdc0dd" />
+</Solution>
