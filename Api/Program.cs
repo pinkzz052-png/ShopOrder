@@ -1,6 +1,7 @@
 using ShopOrder.Api;
 using ShopOrder.DAL;
 using ShopOrder.DAL.Interface;
+using ShopOrder.DAL.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
