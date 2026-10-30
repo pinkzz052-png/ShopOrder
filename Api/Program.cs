@@ -1,9 +1,14 @@
 using ShopOrder.Api;
 using ShopOrder.DAL;
+using ShopOrder.DAL.Interface;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<IGetConnectionString, GetConnectionString>();
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Thiếu chuỗi kết nối DefaultConnection trong appSetting.json");
+
+builder.Services.AddSingleton<IDbConnectionFactory>(new SqlConnectionFactory(connectionString));
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 // Add services to the container.
 
 builder.Services.AddControllers();
