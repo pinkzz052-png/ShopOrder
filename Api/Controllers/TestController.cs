@@ -5,19 +5,10 @@ namespace ShopOrder.Api.Controllers
 {
     public class TestController : Controller
     {
-        private readonly IGetConnectionString _getConnectionString;
-        public TestController(IGetConnectionString getConnectionString)
+        private readonly IDbConnectionFactory _dbConnectionFactory;
+        public TestController(IDbConnectionFactory dbConnectionFactory)
         {
-            _getConnectionString = getConnectionString;
-        }
-        public IActionResult Index()
-        {
-            string? result = _getConnectionString.GetConnectionStringMethod();
-            if (result == null)
-            {
-                return BadRequest();
-            }
-            return Ok(result);
+            _dbConnectionFactory = dbConnectionFactory;
         }
     }
 }
