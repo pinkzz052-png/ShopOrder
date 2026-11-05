@@ -8,5 +8,6 @@ namespace ShopOrder.BLL
     public interface IProductServices
     {
         Task<List<ProductDto>> GetAllAsync();
+        Task<ProductDto?> GetById(int id);
     }
 }
