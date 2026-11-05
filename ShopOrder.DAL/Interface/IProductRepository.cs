@@ -8,5 +8,6 @@ namespace ShopOrder.DAL.Interface
     public interface IProductRepository
     {
         Task<List<Product>> GetAllAsync();
+        Task<Product?> GetById(int id);
     }
 }
