@@ -7,8 +7,9 @@ using ShopOrder.DAL.Models;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Security.Cryptography;
+using ShopOrder.BLL.Interface;
 
-namespace ShopOrder.BLL
+namespace ShopOrder.BLL.Services
 {
     public class ProductServices : IProductServices
     {
@@ -23,10 +24,24 @@ namespace ShopOrder.BLL
             var products = await _productRepository.GetAllAsync();
             return products.Select(p => ToDto(p)).ToList();
         }
-        public async Task<ProductDto?> GetById(int id)
+        public async Task<ProductDto?> GetByIdAsync(int id)
         {
-            var product = await _productRepository.GetById(id);
+            var product = await _productRepository.GetByIdAsync(id);
             return product is not null ? ToDto(product) : null;
+        }
+        public async Task<ProductDto> CreateAsync(CreateProductRequestDto dto)
+        {
+            var product = new Product
+            {
+                CategoryId = dto.CategoryId,
+                Name = dto.Name,
+                Price = dto.Price,
+                StockQuantity = dto.StockQuantity,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            var newProduct = await _productRepository.CreateAsync(product);
+            return ToDto(newProduct);
         }
 
         public static ProductDto ToDto(Product product) => new ProductDto
