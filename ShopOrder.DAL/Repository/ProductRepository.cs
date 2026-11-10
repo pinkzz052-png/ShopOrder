@@ -16,7 +16,7 @@ namespace ShopOrder.DAL.Repository
             _dbConnectionFactory = dbConnectionFactory;
         }
 
-        public async Task<List<Product>> GetAllAsync()
+        public async Task<IEnumerable<Product>> GetAllAsync()
         {
             const string sql = @"
                 SELECT Id, CategoryId, Name, Price, StockQuantity, IsActive, CreatedAt
@@ -55,7 +55,7 @@ namespace ShopOrder.DAL.Repository
 
             return products;
         }
-        public async Task<Product?> GetById(int id)
+        public async Task<Product?> GetByIdAsync(int id)
         {
             const string sql = @"
                 SELECT Id, CategoryId, Name, Price, StockQuantity, IsActive, CreatedAt
@@ -75,6 +75,36 @@ namespace ShopOrder.DAL.Repository
 
             return MapToProduct(reader);
         }
+        public async Task<Product> CreateAsync(Product product)
+        {
+            const string sql = @"
+                INSERT INTO Products (CategoryId, Name, Price, StockQuantity)
+                OUTPUT INSERTED.Id, INSERTED.CategoryId, INSERTED.Name, INSERTED.Price, INSERTED.StockQuantity, INSERTED.IsActive, INSERTED.CreatedAt
+                VALUES(@CategoryId, @Name, @Price, @StockQuantity)
+                ";
+
+            await using var connection = _dbConnectionFactory.CreateConnection();
+            await connection.OpenAsync();
+
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.Add("@CategoryId", SqlDbType.Int).Value = product.CategoryId;
+            command.Parameters.Add("@Name", SqlDbType.NVarChar, 150).Value = product.Name;
+            var price = command.Parameters.Add("@Price", SqlDbType.Decimal);
+            price.Precision = 18;
+            price.Scale = 2;
+            price.Value = product.Price;
+            command.Parameters.Add("@StockQuantity", SqlDbType.Int).Value = product.StockQuantity;
+
+            await using var reader = await command.ExecuteReaderAsync();
+            
+            if (!await reader.ReadAsync())
+            {
+                throw new InvalidOperationException("Failed to create product.");
+            }
+            return MapToProduct(reader);
+        }
+
+        // Map dữ liệu từ reader sang đối tượng Product
         public static Product MapToProduct(SqlDataReader reader) => new Product
         {
             Id = reader.GetInt32(reader.GetOrdinal("Id")),

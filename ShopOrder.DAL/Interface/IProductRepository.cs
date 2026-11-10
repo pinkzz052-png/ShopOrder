@@ -5,9 +5,8 @@ using ShopOrder.DAL.Models;
 
 namespace ShopOrder.DAL.Interface
 {
-    public interface IProductRepository
+    public interface IProductRepository : IRepository<Product>
     {
-        Task<List<Product>> GetAllAsync();
-        Task<Product?> GetById(int id);
+ 
     }
 }
