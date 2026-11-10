@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using ShopOrder.BLL;
+using ShopOrder.BLL.DTOS;
+using ShopOrder.BLL.Interface;
 
 namespace ShopOrder.Api.Controllers
 {
@@ -22,11 +23,17 @@ namespace ShopOrder.Api.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetProductById(int id)
         {
-            var product = await _productServices.GetById(id);
+            var product = await _productServices.GetByIdAsync(id);
             if (product is null)
                 return NotFound();
 
             return Ok(product);
+        }
+        [HttpPost]
+        public async Task<IActionResult> CreateProduct([FromBody] CreateProductRequestDto product)
+        {
+            var createdProduct = await _productServices.CreateAsync(product);
+            return CreatedAtAction(nameof(GetProductById), new { id = createdProduct.Id }, createdProduct);
         }
     }
 }

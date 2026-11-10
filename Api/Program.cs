@@ -1,5 +1,6 @@
 using ShopOrder.Api;
-using ShopOrder.BLL;
+using ShopOrder.BLL.Interface;
+using ShopOrder.BLL.Services;
 using ShopOrder.DAL;
 using ShopOrder.DAL.Interface;
 using ShopOrder.DAL.Repository;
