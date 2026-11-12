@@ -103,6 +103,56 @@ namespace ShopOrder.DAL.Repository
             }
             return MapToProduct(reader);
         }
+        public async Task<Product> UpdateAsync(int id, Product product)
+        {
+            const string sql = @"
+                UPDATE Products
+                SET CategoryId = @CategoryId,
+                    Name = @Name,
+                    Price = @Price,
+                    StockQuantity = @StockQuantity
+                OUTPUT INSERTED.Id, INSERTED.CategoryId, INSERTED.Name, INSERTED.Price, INSERTED.StockQuantity, INSERTED.IsActive, INSERTED.CreatedAt
+                WHERE Id = @Id;
+                ";
+
+            await using var connection = _dbConnectionFactory.CreateConnection();
+            await connection.OpenAsync();
+
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.Add("@CategoryId", SqlDbType.Int).Value = product.CategoryId;
+            command.Parameters.Add("@Name", SqlDbType.NVarChar, 150).Value = product.Name;
+            var price = command.Parameters.Add("@Price", SqlDbType.Decimal);
+            price.Precision = 18;
+            price.Scale = 2;
+            price.Value = product.Price;
+            command.Parameters.Add("@StockQuantity", SqlDbType.Int).Value = product.StockQuantity;
+            command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            if (!await reader.ReadAsync())
+            {
+                throw new InvalidOperationException("Fail to update product. Product not found.");
+            }
+            return MapToProduct(reader);
+        }
+        public async Task<bool> DeleteAsync(int id)
+        {
+            const string sql= @"
+                Update Products
+                SET IsActive = 0
+                WHERE Id = @Id;";
+
+            await using var connection = _dbConnectionFactory.CreateConnection();
+            await connection.OpenAsync();
+
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
+
+            await using var reader = await command.ExecuteReaderAsync();
+            return true;
+        }
+
 
         // Map dữ liệu từ reader sang đối tượng Product
         public static Product MapToProduct(SqlDataReader reader) => new Product
