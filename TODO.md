@@ -23,3 +23,4 @@
 - [ ] Kiểm thử đơn vị cho Service
 - [ ] Ghi nhật ký (logging)
 - [ ] Thử Mapster / Dapper / EF Core (tùy chọn)
+- [ ] Cân nhắc Unit of Work nếu có từ 3 chỗ cần transaction nhiều repository (không cần nếu chuyển EF Core)
