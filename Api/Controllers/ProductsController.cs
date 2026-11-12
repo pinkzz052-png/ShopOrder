@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ShopOrder.BLL.DTOS;
 using ShopOrder.BLL.Interface;
+using System.Net.WebSockets;
 
 namespace ShopOrder.Api.Controllers
 {
@@ -30,10 +31,25 @@ namespace ShopOrder.Api.Controllers
             return Ok(product);
         }
         [HttpPost]
-        public async Task<IActionResult> CreateProduct([FromBody] CreateProductRequestDto product)
+        public async Task<IActionResult> CreateProduct([FromBody] CreateProductRequestDto dto)
         {
-            var createdProduct = await _productServices.CreateAsync(product);
+            var createdProduct = await _productServices.CreateAsync(dto);
             return CreatedAtAction(nameof(GetProductById), new { id = createdProduct.Id }, createdProduct);
+        }
+        [HttpPut]
+        public async Task<IActionResult> UpdateProduct([FromBody] UpdateProductRequestDto dto)
+        {
+            var updatedProduct = await _productServices.UpdateAsync(dto);
+            return Ok(updatedProduct);
+        }
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteAsync(int id)
+        {
+            var result = await _productServices.DeleteAsync(id);
+            if (!result)
+                return NotFound();
+
+            return Ok();
         }
     }
 }
