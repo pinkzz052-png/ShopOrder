@@ -37,11 +37,26 @@ namespace ShopOrder.BLL.Services
                 Name = dto.Name,
                 Price = dto.Price,
                 StockQuantity = dto.StockQuantity,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
             };
             var newProduct = await _productRepository.CreateAsync(product);
             return ToDto(newProduct);
+        }
+        public async Task<ProductDto> UpdateAsync(UpdateProductRequestDto dto)
+        {
+            var product = new Product
+            {
+                Id = dto.Id,
+                CategoryId = dto.CategoryId,
+                Name = dto.Name,
+                Price = dto.Price,
+                StockQuantity = dto.StockQuantity,
+            };
+            var updateProduct = await _productRepository.UpdateAsync(dto.Id, product);
+            return ToDto(updateProduct);
+        }
+        public async Task<bool> DeleteAsync(int id)
+        {
+            return await _productRepository.DeleteAsync(id);
         }
 
         public static ProductDto ToDto(Product product) => new ProductDto
