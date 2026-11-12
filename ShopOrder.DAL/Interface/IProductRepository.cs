@@ -7,6 +7,5 @@ namespace ShopOrder.DAL.Interface
 {
     public interface IProductRepository : IRepository<Product>
     {
- 
     }
 }
