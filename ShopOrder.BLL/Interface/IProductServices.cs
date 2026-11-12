@@ -10,5 +10,7 @@ namespace ShopOrder.BLL.Interface
         Task<List<ProductDto>> GetAllAsync();
         Task<ProductDto?> GetByIdAsync(int id);
         Task<ProductDto> CreateAsync(CreateProductRequestDto requestDto);
+        Task<ProductDto> UpdateAsync(UpdateProductRequestDto requestDto);
+        Task<bool> DeleteAsync(int id);
     }
 }
