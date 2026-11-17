@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using ShopOrder.BLL.DTOS;
+﻿using ShopOrder.BLL.DTOS;
 
 namespace ShopOrder.BLL.Interface
 {

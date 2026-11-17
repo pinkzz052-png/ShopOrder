@@ -21,6 +21,7 @@ namespace ShopOrder.DAL.Repository
             const string sql = @"
                 SELECT Id, CategoryId, Name, Price, StockQuantity, IsActive, CreatedAt
                 FROM Products  
+                WHERE IsActive = 1
                 ORDER BY Id;";
   
             var products = new List<Product>();
@@ -60,7 +61,7 @@ namespace ShopOrder.DAL.Repository
             const string sql = @"
                 SELECT Id, CategoryId, Name, Price, StockQuantity, IsActive, CreatedAt
                 FROM Products
-                WHERE Id = @Id;";
+                WHERE Id = @Id AND IsActive = 1;";
 
             await using var connection = _dbConnectionFactory.CreateConnection();
             await connection.OpenAsync();
@@ -149,8 +150,12 @@ namespace ShopOrder.DAL.Repository
             await using var command = new SqlCommand(sql, connection);
             command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
 
-            await using var reader = await command.ExecuteReaderAsync();
-            return true;
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+            if (rowsAffected == 0)
+            {
+                throw new InvalidOperationException("Fail to delete product. Product not found.");
+            }
+            return rowsAffected > 0;
         }
 
 

@@ -66,7 +66,8 @@ namespace ShopOrder.BLL.Services
             Name = product.Name,
             Price = product.Price,
             StockQuantity = product.StockQuantity,
-            IsActive = product.IsActive
+            IsActive = product.IsActive,
+            CreatedAt = product.CreatedAt
         };
     }
 }
