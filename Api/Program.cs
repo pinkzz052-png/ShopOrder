@@ -12,7 +12,12 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddSingleton<IDbConnectionFactory>(new SqlConnectionFactory(connectionString));
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+
 builder.Services.AddScoped<IProductServices, ProductServices>();
+builder.Services.AddScoped<ICategoryServices, CategoryServices>();
+builder.Services.AddScoped<ICustomerServices, CustomerServices>();
 // Add services to the container.
 
 builder.Services.AddControllers();
