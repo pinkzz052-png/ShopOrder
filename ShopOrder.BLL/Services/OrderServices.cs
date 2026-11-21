@@ -1,12 +1,7 @@
 ﻿using ShopOrder.BLL.Interface;
 using ShopOrder.DAL.Interface;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using ShopOrder.Models.Models;
 using ShopOrder.BLL.DTOS;
-using System.Net.WebSockets;
-using System.Diagnostics;
 namespace ShopOrder.BLL.Services
 {
     public class OrderServices : IOrderServices
@@ -55,9 +50,8 @@ namespace ShopOrder.BLL.Services
         public static Order MapDtoToOrder(CreateOrderRequest request) => new Order
         {
             CustomerId = request.CustomerId,
-            TotalAmount = request.TotalAmount,
             Note = request.Note is null ? null : request.Note,
-            Items = request.Items
+            Items = request.Items.Select(it => MapDtoToOrderItem(it)).ToList()
         };
         public static OrderItemDto MapToOrderItemDto(OrderItem orderItem) => new OrderItemDto
         {
@@ -67,6 +61,13 @@ namespace ShopOrder.BLL.Services
             Quantity = orderItem.Quantity,
             UnitPrice = orderItem.UnitPrice,
             ProductName = orderItem.ProductName
+        };
+
+        public static OrderItem MapDtoToOrderItem(CreateOrderItemRequest request) => new OrderItem
+        {
+            OrderId = request.OrderId,
+            ProductId = request.ProductId,
+            Quantity = request.Quantity,
         };
     }
 }
