@@ -36,10 +36,10 @@ namespace ShopOrder.Api.Controllers
             var createdProduct = await _productServices.CreateAsync(dto);
             return CreatedAtAction(nameof(GetProductById), new { id = createdProduct.Id }, createdProduct);
         }
-        [HttpPut]
-        public async Task<IActionResult> UpdateProduct([FromBody] UpdateProductRequestDto dto)
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductRequestDto dto)
         {
-            var updatedProduct = await _productServices.UpdateAsync(dto);
+            var updatedProduct = await _productServices.UpdateAsync(id, dto);
             return Ok(updatedProduct);
         }
         [HttpDelete("{id:int}")]

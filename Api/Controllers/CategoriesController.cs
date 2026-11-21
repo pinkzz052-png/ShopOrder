@@ -9,10 +9,10 @@ namespace ShopOrder.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CategoryController : ControllerBase
+    public class CategoriesController : ControllerBase
     {
         private readonly ICategoryServices _categoryServices;
-        public CategoryController(ICategoryServices categoryServices)
+        public CategoriesController(ICategoryServices categoryServices)
         {
             _categoryServices = categoryServices;
         }
