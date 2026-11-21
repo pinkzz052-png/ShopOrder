@@ -32,13 +32,6 @@ namespace ShopOrder.DAL.Repository
 
             await using var reader = await command.ExecuteReaderAsync();
 
-            var idCol = reader.GetOrdinal("OrderId");
-            var customerIdCol = reader.GetOrdinal("CustomerId");
-            var orderDateCol = reader.GetOrdinal("OrderDate");
-            var statusCol = reader.GetOrdinal("Status");
-            var totalAmountCol = reader.GetOrdinal("TotalAmount");
-            var noteCol = reader.GetOrdinal("Note");
-
             while (await reader.ReadAsync())
             {
                 orders.Add(MapToOrder(reader));
@@ -50,14 +43,14 @@ namespace ShopOrder.DAL.Repository
         {
             const string sql = @"
                 SELECT o.Id AS OrderId, o.CustomerId, o.OrderDate, o.Status, o.TotalAmount, o.Note,
-                c.FullName AS CustomerName,
-                oi.Id AS ItemId, oi.OrderId, oi.ProductId, oi.Quantity, oi.UnitPrice
-                p.Name AS ProductName
-                FROM Orders
-                INNER JOIN Customers c ON c.Id = o.CustomerId,
-                LEFT JOIN OrderItems oi ON oi.OrderId = o.Id,
+                        c.FullName AS CustomerName,
+                        oi.Id AS ItemId, oi.OrderId, oi.ProductId, oi.Quantity, oi.UnitPrice,
+                        p.Name AS ProductName
+                FROM Orders o
+                INNER JOIN Customers c ON c.Id = o.CustomerId
+                LEFT JOIN OrderItems oi ON oi.OrderId = o.Id
                 LEFT JOIN Products p ON p.Id = oi.ProductId
-                WHERE Id =  @Id";
+                WHERE o.Id =  @Id";
 
             await using var connection = _dbConnectionFactory.CreateConnection();
             await connection.OpenAsync();
@@ -96,11 +89,15 @@ namespace ShopOrder.DAL.Repository
         {
             const string insertOrderSql = @"
                 INSERT INTO Orders (CustomerId, TotalAmount, Note)
-                OUPUT INSERTED.Id
+                OUTPUT INSERTED.Id
                 VALUES (@CustomerId, @TotalAmount, @Note)";
             const string insertItemSql = @"
                 INSERT INTO OrderItems (OrderId, ProductId, Quantity, UnitPrice)
-                VALUES (@OrderId, @ProductId, @Quantity, @UnitPrice";
+                VALUES (@OrderId, @ProductId, @Quantity, @UnitPrice)";
+            const string updateStockSql = @"
+                UPDATE Products
+                SET StockQuantity = StockQuantity - @Quantity
+                WHERE Id = @ProductId;";
 
             await using var connection = _dbConnectionFactory.CreateConnection();
             await connection.OpenAsync();
@@ -110,6 +107,7 @@ namespace ShopOrder.DAL.Repository
 
             try
             {
+                //tạo đơn hàng mới
                 await using (var orderCommand = new SqlCommand(insertOrderSql, connection, transaction))
                 {
                     orderCommand.Parameters.Add("@CustomerId", SqlDbType.Int).Value = order.CustomerId;
@@ -121,16 +119,35 @@ namespace ShopOrder.DAL.Repository
                     orderCommand.Parameters.Add("@Note", SqlDbType.NVarChar, 500).Value = (object?)order.Note ?? DBNull.Value ;
                     newOrderId = Convert.ToInt32(await orderCommand.ExecuteScalarAsync());
                 }
+                //Tạo OrderItem thuộc Order có id là newOrderId
                 foreach (var item in order.Items)
                 {
-
+                    await using var orderItemCommand = new SqlCommand(insertItemSql, connection, transaction);
+                    orderItemCommand.Parameters.Add("@OrderId", SqlDbType.Int).Value = newOrderId;
+                    orderItemCommand.Parameters.Add("@ProductId", SqlDbType.Int).Value = item.ProductId;
+                    orderItemCommand.Parameters.Add("@Quantity", SqlDbType.Int).Value = item.Quantity;
+                    var unitPrice = orderItemCommand.Parameters.Add("@UnitPrice", SqlDbType.Decimal);
+                    unitPrice.Precision = 18;
+                    unitPrice.Scale = 2;
+                    unitPrice.Value = item.UnitPrice;
                 }
+                // 3. Trừ tồn kho (cùng transaction)
+                foreach (var item in order.Items)
+                {
+                    await using var stockCommand = new SqlCommand(updateStockSql, connection, transaction);
+                    stockCommand.Parameters.Add("@ProductId", SqlDbType.Int).Value = item.ProductId;
+                    stockCommand.Parameters.Add("@Quantity", SqlDbType.Int).Value = item.Quantity;
+                    await stockCommand.ExecuteNonQueryAsync();
+                }
+
+                transaction.Commit();
             }
             catch
             {
-
+                transaction.Rollback();
+                throw;
             }
-            return null;
+            return await GetByIdAsync(newOrderId);
         }
         public async Task<Order?> UpdateStatusAsync(int id, string status)
         {
