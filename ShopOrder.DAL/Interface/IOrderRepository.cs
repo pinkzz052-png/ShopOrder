@@ -7,7 +7,7 @@ namespace ShopOrder.DAL.Interface
     {
         Task<IEnumerable<Order>> GetAllAsync();
         Task<Order?> GetByIdAsync(int id);
-        Task<Order> CreateAsync(Order order);
+        Task<Order?> CreateAsync(Order order);
         Task<Order?> UpdateStatusAsync(int id, string status);
     }
 }
