@@ -8,8 +8,7 @@ namespace ShopOrder.BLL.DTOS
     public class CreateOrderRequest
     {
         public int CustomerId { get; set; }
-        public decimal TotalAmount { get; set; }
         public string? Note { get; set; }
-        public List<OrderItem> Items { get; set; } = new();
+        public List<CreateOrderItemRequest> Items { get; set; } = new();
     }
 }
