@@ -29,7 +29,7 @@ namespace ShopOrder.BLL.Services
             }
             return MapToCustomerDto(customer);
         }
-        public async Task<CustomerDto> CreateAsync(CreateCustomerRequest request)
+        public async Task<CustomerDto?> CreateAsync(CreateCustomerRequest request)
         {
             var customer = new Customer
             {
@@ -41,7 +41,7 @@ namespace ShopOrder.BLL.Services
             var newCustomer = await _customerRepository.CreateAsync(customer);
             return MapToCustomerDto(newCustomer);
         }
-        public async Task<CustomerDto> UpdateAsync(int id, UpdateCustomerRequest request)
+        public async Task<CustomerDto?> UpdateAsync(int id, UpdateCustomerRequest request)
         {
             var customer = new Customer
             {
