@@ -130,6 +130,7 @@ namespace ShopOrder.DAL.Repository
                     unitPrice.Precision = 18;
                     unitPrice.Scale = 2;
                     unitPrice.Value = item.UnitPrice;
+                    await orderItemCommand.ExecuteNonQueryAsync();
                 }
                 // 3. Trừ tồn kho (cùng transaction)
                 foreach (var item in order.Items)
