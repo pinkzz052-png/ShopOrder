@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿
 using ShopOrder.DAL.Interface;
 using ShopOrder.BLL.DTOS;
-using ShopOrder.DAL.Models;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Security.Cryptography;
+using ShopOrder.Models.Models;
+
 using ShopOrder.BLL.Interface;
 
 namespace ShopOrder.BLL.Services
@@ -29,7 +25,7 @@ namespace ShopOrder.BLL.Services
             var product = await _productRepository.GetByIdAsync(id);
             return product is not null ? ToDto(product) : null;
         }
-        public async Task<ProductDto> CreateAsync(CreateProductRequestDto dto)
+        public async Task<ProductDto?> CreateAsync(CreateProductRequestDto dto)
         {
             var product = new Product
             {
@@ -41,17 +37,16 @@ namespace ShopOrder.BLL.Services
             var newProduct = await _productRepository.CreateAsync(product);
             return ToDto(newProduct);
         }
-        public async Task<ProductDto> UpdateAsync(UpdateProductRequestDto dto)
+        public async Task<ProductDto?> UpdateAsync(int id, UpdateProductRequestDto dto)
         {
             var product = new Product
             {
-                Id = dto.Id,
                 CategoryId = dto.CategoryId,
                 Name = dto.Name,
                 Price = dto.Price,
                 StockQuantity = dto.StockQuantity,
             };
-            var updateProduct = await _productRepository.UpdateAsync(dto.Id, product);
+            var updateProduct = await _productRepository.UpdateAsync(id, product);
             return ToDto(updateProduct);
         }
         public async Task<bool> DeleteAsync(int id)

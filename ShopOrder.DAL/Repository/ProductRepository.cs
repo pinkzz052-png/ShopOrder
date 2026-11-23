@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using ShopOrder.DAL.Models;
+using ShopOrder.Models.Models;
 using Microsoft.Data.SqlClient;
 using System.Data;
 
