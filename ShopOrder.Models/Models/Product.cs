@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShopOrder.DAL.Models
+namespace ShopOrder.Models.Models
 {
     public class Product
     {
