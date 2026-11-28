@@ -1,188 +1,78 @@
-﻿using ShopOrder.DAL.Interface;
-using ShopOrder.Models.Models;
+﻿using System.Data;
+using Dapper;
 using Microsoft.Data.SqlClient;
+using ShopOrder.DAL.Interface;
+using ShopOrder.Models.Models;
 
-using System.Data;
+namespace ShopOrder.DAL.Repository;
 
-namespace ShopOrder.DAL.Repository
+public class OrderRepository : IOrderRepository
 {
-    public class OrderRepository : IOrderRepository
-    {
-        private readonly IDbConnectionFactory _dbConnectionFactory;
-        public OrderRepository(IDbConnectionFactory dbConnectionFactory)
-        {
-            _dbConnectionFactory = dbConnectionFactory;
-        }
+    private readonly IDbSession _dbSession;
 
-        public async Task<IEnumerable<Order>> GetAllAsync()
-        {
-            const string sql = @"
-                SELECT o.Id AS OrderId, o.CustomerId, o.OrderDate, o.Status, o.TotalAmount, o.Note,
+    public OrderRepository(IDbSession dbSession)
+    {
+        _dbSession = dbSession;
+    }
+
+    public async Task<IEnumerable<Order>> GetAllAsync()
+    {
+        const string sql = @"
+                SELECT o.Id, o.CustomerId, o.OrderDate, o.Status, o.TotalAmount, o.Note,
                 c.FullName AS CustomerName
 				FROM Orders o
                 INNER JOIN Customers c ON c.Id = o.CustomerId
                 ORDER BY o.Id DESC";
-            
-            var orders = new List<Order>();
 
-            await using var connection = _dbConnectionFactory.CreateConnection();
-            await connection.OpenAsync();
+        return await _dbSession.Connection.QueryAsync<Order>(sql, _dbSession.Transaction);
+    }
 
-            await using var command = new SqlCommand(sql, connection);
+    public async Task<Order?> GetByIdAsync(int id)
+    {
+        const string sql = @"
+            SELECT o.Id, o.CustomerId, o.OrderDate, o.Status, o.TotalAmount, o.Note,
+                   c.FullName AS CustomerName
+            FROM Orders o
+            INNER JOIN Customers c ON c.Id = o.CustomerId
+            WHERE o.Id = @Id;
 
-            await using var reader = await command.ExecuteReaderAsync();
+            SELECT oi.Id, oi.OrderId, oi.ProductId, p.Name AS ProductName, oi.Quantity, oi.UnitPrice
+            FROM OrderItems oi
+            LEFT JOIN Products p ON p.Id = oi.ProductId
+            WHERE oi.OrderId = @Id;";
 
-            while (await reader.ReadAsync())
-            {
-                orders.Add(MapToOrder(reader));
-            }
+        await using var multi =  await _dbSession.Connection.QueryMultipleAsync(
+            sql, new { Id = id }, transaction: _dbSession.Transaction);
+        
+        var order = await multi.ReadSingleOrDefaultAsync<Order>();
+        if (order is null) return null;
 
-            return orders;
-        }
-        public async Task<Order?> GetByIdAsync(int id)
-        {
-            const string sql = @"
-                SELECT o.Id AS OrderId, o.CustomerId, o.OrderDate, o.Status, o.TotalAmount, o.Note,
-                        c.FullName AS CustomerName,
-                        oi.Id AS ItemId, oi.OrderId, oi.ProductId, oi.Quantity, oi.UnitPrice,
-                        p.Name AS ProductName
-                FROM Orders o
-                INNER JOIN Customers c ON c.Id = o.CustomerId
-                LEFT JOIN OrderItems oi ON oi.OrderId = o.Id
-                LEFT JOIN Products p ON p.Id = oi.ProductId
-                WHERE o.Id =  @Id";
+        order.Items = (await multi.ReadAsync<OrderItem>()).ToList();
+        return order;
+    }
 
-            await using var connection = _dbConnectionFactory.CreateConnection();
-            await connection.OpenAsync();
-
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
-
-            await using var reader = await command.ExecuteReaderAsync();
-
-            Order? order = null;
-            int itemIdCol = reader.GetOrdinal("ItemId");
-
-            while (await reader.ReadAsync())
-            {
-                if (order is null)
-                {
-                    order = MapToOrder(reader);
-                }
-                if (!reader.IsDBNull(itemIdCol))
-                {
-                    order.Items.Add(new OrderItem
-                    {
-                        Id = reader.GetInt32(itemIdCol),
-                        OrderId = order.Id,
-                        ProductId = reader.GetInt32(reader.GetOrdinal("ProductId")),
-                        ProductName = reader.GetString(reader.GetOrdinal("ProductName")),
-                        Quantity = reader.GetInt32(reader.GetOrdinal("Quantity")),
-                        UnitPrice = reader.GetDecimal(reader.GetOrdinal("UnitPrice"))
-                    });
-                }
-            }
-            return order;
-        }
-
-        public async Task<Order?> CreateAsync(Order order)
-        {
-            const string insertOrderSql = @"
+    public async Task<int> CreateAsync(Order order)
+    {
+        const string sql = @"
                 INSERT INTO Orders (CustomerId, TotalAmount, Note)
                 OUTPUT INSERTED.Id
                 VALUES (@CustomerId, @TotalAmount, @Note)";
-            const string insertItemSql = @"
-                INSERT INTO OrderItems (OrderId, ProductId, Quantity, UnitPrice)
-                VALUES (@OrderId, @ProductId, @Quantity, @UnitPrice)";
-            const string updateStockSql = @"
-                UPDATE Products
-                SET StockQuantity = StockQuantity - @Quantity
-                WHERE Id = @ProductId;";
 
-            await using var connection = _dbConnectionFactory.CreateConnection();
-            await connection.OpenAsync();
+        return await _dbSession.Connection.ExecuteScalarAsync<int>(sql, order, transaction: _dbSession.Transaction);
+    }
 
-            await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
-            int newOrderId;
-
-            try
-            {
-                //tạo đơn hàng mới
-                await using (var orderCommand = new SqlCommand(insertOrderSql, connection, transaction))
-                {
-                    orderCommand.Parameters.Add("@CustomerId", SqlDbType.Int).Value = order.CustomerId;
-                    var price = orderCommand.Parameters.Add("@TotalAmount", SqlDbType.Decimal);
-                    price.Precision = 18;
-                    price.Scale = 2;
-                    price.Value = order.TotalAmount;
-
-                    orderCommand.Parameters.Add("@Note", SqlDbType.NVarChar, 500).Value = (object?)order.Note ?? DBNull.Value ;
-                    newOrderId = Convert.ToInt32(await orderCommand.ExecuteScalarAsync());
-                }
-                //Tạo OrderItem thuộc Order có id là newOrderId
-                foreach (var item in order.Items)
-                {
-                    await using var orderItemCommand = new SqlCommand(insertItemSql, connection, transaction);
-                    orderItemCommand.Parameters.Add("@OrderId", SqlDbType.Int).Value = newOrderId;
-                    orderItemCommand.Parameters.Add("@ProductId", SqlDbType.Int).Value = item.ProductId;
-                    orderItemCommand.Parameters.Add("@Quantity", SqlDbType.Int).Value = item.Quantity;
-                    var unitPrice = orderItemCommand.Parameters.Add("@UnitPrice", SqlDbType.Decimal);
-                    unitPrice.Precision = 18;
-                    unitPrice.Scale = 2;
-                    unitPrice.Value = item.UnitPrice;
-                    await orderItemCommand.ExecuteNonQueryAsync();
-                }
-                // 3. Trừ tồn kho (cùng transaction)
-                foreach (var item in order.Items)
-                {
-                    await using var stockCommand = new SqlCommand(updateStockSql, connection, transaction);
-                    stockCommand.Parameters.Add("@ProductId", SqlDbType.Int).Value = item.ProductId;
-                    stockCommand.Parameters.Add("@Quantity", SqlDbType.Int).Value = item.Quantity;
-                    await stockCommand.ExecuteNonQueryAsync();
-                }
-
-                transaction.Commit();
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
-            }
-            return await GetByIdAsync(newOrderId);
-        }
-        public async Task<Order?> UpdateStatusAsync(int id, string status)
-        {
-            const string sql = @"
+    public async Task<Order?> UpdateStatusAsync(int id, string status)
+    {
+        const string sql = @"
                 UPDATE Orders
                 SET Status = @Status
                 WHERE Id = @Id
                 ";
 
-            await using var connection = _dbConnectionFactory.CreateConnection();
-            await connection.OpenAsync();
-
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
-            command.Parameters.Add("@Status", SqlDbType.NVarChar, 20).Value = status;
-
-            var rowAffected = await command.ExecuteNonQueryAsync();
-            if (rowAffected == 0)
-            {
-                return null;
-            }
-
-            return await GetByIdAsync(id);
-        }
-
-        public static Order MapToOrder(SqlDataReader reader) => new Order
-        {
-            Id = reader.GetInt32(reader.GetOrdinal("OrderId")),
-            CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
-            CustomerName = reader.GetString(reader.GetOrdinal("CustomerName")),
-            OrderDate = reader.GetDateTime(reader.GetOrdinal("OrderDate")),
-            Status = reader.GetString(reader.GetOrdinal("Status")),
-            TotalAmount = reader.GetDecimal(reader.GetOrdinal("TotalAmount")),
-            Note = reader.IsDBNull(reader.GetOrdinal("Note")) ? null : reader.GetString(reader.GetOrdinal("Note"))
-        };
+        var rowAffected =  await _dbSession.Connection.ExecuteAsync(sql, new { Id = id, Status = status }, transaction: _dbSession.Transaction);
+        
+        if (rowAffected == 0) return null;
+        
+        return await GetByIdAsync(id);  
     }
 }
