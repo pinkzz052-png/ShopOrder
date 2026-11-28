@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using ShopOrder.Models.Models;
+﻿using ShopOrder.Models.Models;
 
-namespace ShopOrder.DAL.Interface
+namespace ShopOrder.DAL.Interface;
+
+public interface ICategoryRepository : IRepository<Category>
 {
-    public interface ICategoryRepository : IRepository<Category>
-    {
-    }
 }
