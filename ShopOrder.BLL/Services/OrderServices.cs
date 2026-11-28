@@ -1,73 +1,118 @@
-﻿using ShopOrder.BLL.Interface;
+﻿using ShopOrder.BLL.DTOS;
+using ShopOrder.BLL.Interface;
 using ShopOrder.DAL.Interface;
 using ShopOrder.Models.Models;
-using ShopOrder.BLL.DTOS;
-namespace ShopOrder.BLL.Services
-{
-    public class OrderServices : IOrderServices
-    {
-        private readonly IOrderRepository _orderRepository;
-        public OrderServices(IOrderRepository orderRepository)
-        {
-            _orderRepository = orderRepository;
-        }
-        public async Task<List<OrderDto>> GetAllAsync()
-        {
-            var orders = await _orderRepository.GetAllAsync();
-            return orders.Select(o => MapToOrderDto(o)).ToList();
-        }
-        public async Task<OrderDto?> GetByIdAsync(int id)
-        {
-            var order = await _orderRepository.GetByIdAsync(id);
-            if (order is null) return null;
-            return MapToOrderDto(order);
-        }
-        public async Task<OrderDto?> CreateAsync(CreateOrderRequest request)
-        {
-            
-            var newOrder = await _orderRepository.CreateAsync(MapDtoToOrder(request));
-            if (newOrder == null) return null;
-            return MapToOrderDto(newOrder);
-        }
-        public async Task<OrderDto?> UpdateStatusAsync(int id, UpdateStatusOrderRequest status)
-        {
-            string statusString = Convert.ToString(status.status);
-            var updatedOrder = await _orderRepository.UpdateStatusAsync(id, statusString);
-            if (updatedOrder == null) return null;
-            return MapToOrderDto(updatedOrder);
-        }
-        public static OrderDto MapToOrderDto(Order order) => new OrderDto
-        {
-            Id = order.Id,
-            CustomerId = order.CustomerId,
-            OrderDate = order.OrderDate,
-            Status = order.Status,
-            TotalAmount = order.TotalAmount,
-            Note = order.Note,
-            CustomerName = order.CustomerName,
-            Items = order.Items.Select(it => MapToOrderItemDto(it)).ToList()
-        };
-        public static Order MapDtoToOrder(CreateOrderRequest request) => new Order
-        {
-            CustomerId = request.CustomerId,
-            Note = request.Note is null ? null : request.Note,
-            Items = request.Items.Select(it => MapDtoToOrderItem(it)).ToList()
-        };
-        public static OrderItemDto MapToOrderItemDto(OrderItem orderItem) => new OrderItemDto
-        {
-            Id = orderItem.Id,
-            OrderId = orderItem.OrderId,
-            ProductId = orderItem.ProductId,
-            Quantity = orderItem.Quantity,
-            UnitPrice = orderItem.UnitPrice,
-            ProductName = orderItem.ProductName
-        };
+using Mapster;
 
-        public static OrderItem MapDtoToOrderItem(CreateOrderItemRequest request) => new OrderItem
+namespace ShopOrder.BLL.Services;
+
+public class OrderServices : IOrderServices
+{
+    private readonly IOrderRepository _orderRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly IOrderItemRepository _orderItemRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public OrderServices(IOrderRepository orderRepository, IProductRepository productRepository, IOrderItemRepository orderItemRepository, IUnitOfWork unitOfWork)
+    {
+        _orderRepository = orderRepository;
+        _productRepository = productRepository;
+        _orderItemRepository = orderItemRepository;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<List<OrderDto>> GetAllAsync()
+    {
+        var orders = await _orderRepository.GetAllAsync();
+        return orders.Adapt<List<OrderDto>>();
+    }
+
+    public async Task<OrderDto?> GetByIdAsync(int id)
+    {
+        var order = await _orderRepository.GetByIdAsync(id);
+        if (order is null) return null;
+        return order.Adapt<OrderDto>();
+    }
+
+    public async Task<int?> CreateAsync(CreateOrderRequest request)
+    {
+        if (request.Items.Count == 0)
         {
-            OrderId = request.OrderId,
-            ProductId = request.ProductId,
-            Quantity = request.Quantity,
-        };
+            throw new Exception("Items cannot be empty");
+        }
+
+        var groupItems = request.Items
+            .GroupBy(p => p.ProductId)
+            .Select(g => new
+            {
+                ProductId = g.Key,
+                Quantity = g.Sum(x => x.Quantity)
+            })
+            .ToList();
+
+        if (groupItems.Any(x => x.Quantity == 0)) 
+            throw new Exception("So luong phai lon hon khong");
+        
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var productIds = groupItems.Select(x => x.ProductId).Distinct();
+            var products = await _productRepository.GetByIdsAsync(productIds);
+            var productDict = products.ToDictionary(k => k.Id);
+
+            decimal totalAmount = 0;
+            var orderItems = new List<OrderItem>();
+
+            foreach (var item in request.Items)
+            {
+                if (!productDict.TryGetValue(item.ProductId, out var product))
+                    throw new InvalidOperationException($"Product {item.ProductId} doesn't exist");
+
+                var stockUpdated = await _productRepository.DecreaseStockQuantityAsync(item.ProductId, item.Quantity);
+                if (!stockUpdated)
+                    throw new InvalidOperationException("khong du so luong");
+
+                orderItems.Add(new OrderItem
+                {
+                    ProductId = item.ProductId,
+                    Quantity = item.Quantity,
+                    UnitPrice = product.Price,
+                });
+
+                totalAmount += item.Quantity * product.Price;
+            }
+
+            var order = new Order
+            {
+                CustomerId = request.CustomerId,
+                TotalAmount = totalAmount,
+                Note = request.Note
+            };
+            int newOrderId = await _orderRepository.CreateAsync(order);
+
+            foreach (var item in orderItems)
+            {
+                item.OrderId = newOrderId;
+            }
+
+            var createdOrderItems = await _orderItemRepository.CreateOrderItemAsync(orderItems);
+            if (!createdOrderItems) throw new InvalidOperationException("khong the tao don hang");
+
+            await _unitOfWork.CommitAsync();
+            return newOrderId;
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<OrderDto?> UpdateStatusAsync(int id, UpdateStatusOrderRequest status)
+    {
+        var statusString = Convert.ToString(status.status);
+        var updatedOrder = await _orderRepository.UpdateStatusAsync(id, statusString);
+        if (updatedOrder == null) return null;
+        return updatedOrder.Adapt<OrderDto>();
     }
 }
