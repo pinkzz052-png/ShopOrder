@@ -1,12 +1,10 @@
-﻿using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Data;
+using Microsoft.Data.SqlClient;
+using System.Data.Common;
 
-namespace ShopOrder.DAL
+namespace ShopOrder.DAL;
+
+public interface IDbConnectionFactory
 {
-    public interface IDbConnectionFactory
-    {
-        SqlConnection CreateConnection();
-    }
+    DbConnection CreateConnection();
 }
