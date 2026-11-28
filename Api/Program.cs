@@ -8,13 +8,18 @@ using ShopOrder.DAL.Repository;
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Thiếu chuỗi kết nối DefaultConnection trong appSetting.json");
+                       ?? throw new InvalidOperationException(
+                           "Thiếu chuỗi kết nối DefaultConnection trong appSetting.json");
 
 builder.Services.AddSingleton<IDbConnectionFactory>(new SqlConnectionFactory(connectionString));
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();
+
+builder.Services.AddScoped<IDbSession, DbSession>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddScoped<IOrderServices, OrderServices>();
 builder.Services.AddScoped<IProductServices, ProductServices>();
@@ -26,7 +31,7 @@ builder.Services.AddControllers();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
-    ;
+;
 var app = builder.Build();
 
 
